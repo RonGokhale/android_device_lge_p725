@@ -1,0 +1,85 @@
+on early-init
+    start ueventd
+
+on init
+    export PATH /sbin
+    export ANDROID_ROOT /system
+    export ANDROID_DATA /data
+    export EXTERNAL_STORAGE /sdcard
+
+    symlink /system/etc /etc
+
+    mkdir /boot
+    mkdir /sdcard
+    mkdir /sd-ext
+    mkdir /datadata
+    mkdir /emmc
+    mkdir /staging
+    mkdir /system
+    mkdir /data
+    mkdir /cache
+    mount /tmp /tmp tmpfs
+
+# mount mmc partitions
+#    wait /dev/block/mmcblk0p7
+#    mount ext3 /dev/block/mmcblk0p7 /system rw barrier=1
+    
+#    wait /dev/block/mmcblk0p8
+#    exec /system/bin/demigod_make_ext3fs -e /dev/block/mmcblk0p8 /data
+#    exec /system/bin/e2fsck -p /dev/block/mmcblk0p8
+#    mount ext3 /dev/block/mmcblk0p8 /data nosuid nodev barrier=1 noauto_da_alloc
+
+
+    mkdir /cache
+    mount /tmp /tmp tmpfs
+    #--------------------------------------------------------------------------------------
+    # Category [kalen.lee@lge.com 110623]
+    # add directories to mount internal sd card
+    #--------------------------------------------------------------------------------------
+    mkdir /mnt
+    mkdir /mnt/sdcard
+    symlink /mnt/sdcard /sdcard
+
+#    mount ext3 /dev/block/mmcblk0p7 /system ro noatime data=ordered
+#    mount ext3 /dev/block/mmcblk0p8 /data nosuid nodev noatime data=ordered
+
+    # KALEN_END
+#Test end
+
+    # Resize system partition
+    mount ext3 /dev/block/mmcblk0p7 /system ro noatime data=ordered
+#    mount ext3 /dev/block/mmcblk0p8 /data nosuid nodev noatime data=ordered
+#    mount ext3 /dev/block/mmcblk0p8 /data rw
+
+	mkdir /sdcard 0000 system system
+	exec /system/bin/fsck_msdos -p -f /dev/block/mmcblk0p15
+	mount vfat /dev/block/mmcblk0p15 /sdcard rw
+
+# LGE_UPDATE_S   yongkwan.kang@lge.com 2011.12.07, ADB on during recovery Mode
+ write /proc/driver/usb_mode_state 2
+# LGE_UPDATE_E   yongkwan.kang@lge.com 2011.12.07, ADB on during recovery Mode
+
+on boot
+
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+    class_start default
+
+service ueventd /sbin/ueventd
+    critical
+
+service console /system/bin/sh
+    console
+
+service recovery /sbin/recovery
+
+service adbd /sbin/adbd recovery
+    disabled
+
+on property:persist.service.adb.enable=1
+    start adbd
+
+on property:persist.service.adb.enable=0
+    stop adbd
